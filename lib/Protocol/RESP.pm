@@ -20,6 +20,37 @@ my %type_dispatch = (
     '$' => "bulk_string",
     '*' => "array",
 );
+
+sub simple_string {
+    my($self,$str) = @_;
+    return "$str";
+}
+
+sub error {
+    my($self,$error) = @_;
+    die $error;
+}
+
+sub integer {
+    my($self,$int) = @_;
+    return 0+$int;
+}
+
+sub bulk_string {
+    my($self,$len,$text_ref) = @_;
+    my $str;
+    if( $len == -1 ) {
+        $str = undef; #Null Bulk String
+    } else {
+        $str = substr($$text_ref,0,$len,'');
+    }
+    $$text_ref =~  s/^\r\n//;
+    if(length($str) != $len) {
+        die "incomplete parse";
+    }
+    return $str;
+}
+
 sub array {
     my($self,$num_elements,$text_ref) = @_;
     my $arr = [];
@@ -27,24 +58,6 @@ sub array {
         push @$arr,$self->_parse($text_ref);
     }
     return $arr;
-}
-
-sub simple_string {
-    my($self,$str) = @_;
-    return "$str";
-}
-sub integer {
-    my($self,$int) = @_;
-    return 0+$int;
-}
-sub bulk_string {
-    my($self,$len,$text_ref) = @_;
-    my $str = substr($$text_ref,0,$len,'');
-    $$text_ref =~  s/^\r\n//;
-    if(length($str) != $len) {
-        die "incomplete parse";
-    }
-    return $str;
 }
 
 sub parse {
@@ -57,7 +70,7 @@ sub _parse {
         my $line = $1;
         my $t = substr( $line, 0, 1, '');
         my $type = $type_dispatch{$t};
-        die "cannot handle $t" unless $type;
+        die "cannot handle $t" unless $type && $self->can($type);
         return $self->$type($line,$text_ref);
     }
     return;

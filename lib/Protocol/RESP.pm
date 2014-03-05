@@ -5,6 +5,7 @@ use Data::Dumper::Concise;
 #REdis Serialization Protoco
 #http://redis.io/topics/protocol
 
+sub IncompleteParse { 'incomplete parse' }
 sub new {
     my($class,$params) = @_;
     $params ||= {};
@@ -46,7 +47,7 @@ sub bulk_string {
     }
     $$text_ref =~  s/^\r\n//;
     if(length($str) != $len) {
-        die "incomplete parse";
+        die IncompleteParse;
     }
     return $str;
 }
@@ -57,6 +58,7 @@ sub array {
     for( 1 .. $num_elements ) {
         push @$arr,$self->_parse($text_ref);
     }
+    die IncompleteParse if(@$arr != $num_elements);
     return $arr;
 }
 
